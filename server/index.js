@@ -293,18 +293,21 @@ app.get('/api/meetings/:id/export/badges', (req, res) => {
 
       const templatePath = path.resolve(__dirname, '../範例/桌牌格式.pptx');
       
-      // 產出並同時備份一份至根目錄與產出目錄，確保使用者在資料夾也能直接看到
-      const exportDir = path.resolve(__dirname, '../產出檔案');
-      if (!fs.existsSync(exportDir)) {
-        fs.mkdirSync(exportDir, { recursive: true });
+      // 本機環境下額外儲存一份備份至專案目錄
+      if (!isVercel) {
+        const exportDir = path.resolve(__dirname, '../產出檔案');
+        if (!fs.existsSync(exportDir)) {
+          fs.mkdirSync(exportDir, { recursive: true });
+        }
+        const rootBackup = path.resolve(__dirname, '../會議桌牌_最新匯出.pptx');
+        const backupPath = path.resolve(exportDir, `${meeting.name}_會議桌牌.pptx`);
+        try {
+          generateNameBadges(attendees, templatePath, rootBackup);
+          fs.copyFileSync(rootBackup, backupPath);
+        } catch (e) {}
       }
-      const rootBackup = path.resolve(__dirname, '../會議桌牌_最新匯出.pptx');
-      const backupPath = path.resolve(exportDir, `${meeting.name}_會議桌牌.pptx`);
 
-      const buffer = generateNameBadges(attendees, templatePath, rootBackup);
-      try {
-        fs.copyFileSync(rootBackup, backupPath);
-      } catch (e) {}
+      const buffer = generateNameBadges(attendees, templatePath);
 
       const filename = encodeURIComponent(`${meeting.name}_會議桌牌.pptx`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');

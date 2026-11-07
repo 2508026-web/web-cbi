@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "範例/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
