@@ -2,12 +2,24 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
-const dbDir = path.resolve(__dirname, '../data');
+// Vercel Serverless 環境下僅 /tmp 可寫入
+const isVercel = process.env.VERCEL === '1';
+const dbDir = isVercel ? '/tmp' : path.resolve(__dirname, '../data');
+
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
 const dbPath = path.join(dbDir, 'meeting_system.db');
+
+// 若是在 Vercel 環境且 /tmp 尚無 db，嘗試複製原始示範 db
+if (isVercel && !fs.existsSync(dbPath)) {
+  const localDb = path.resolve(__dirname, '../data/meeting_system.db');
+  if (fs.existsSync(localDb)) {
+    try { fs.copyFileSync(localDb, dbPath); } catch (e) {}
+  }
+}
+
 const db = new sqlite3.Database(dbPath);
 
 db.serialize(() => {
@@ -67,7 +79,7 @@ db.serialize(() => {
     )
   `);
 
-  // 插入預設費用規則 (若不存在)
+  // 預設費用規則 (若不存在)
   const defaultRules = [
     { code: '51330909', name: '審查費', category: 'review', default_amount: 2500, description: '出席專家審查費（每場次標準定額）' },
     { code: '51330906', name: '專家旅費', category: 'traffic', default_amount: 1500, description: '外縣市交通高鐵/台鐵/自用車實報實銷' },
@@ -87,7 +99,7 @@ db.serialize(() => {
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('google_drive_folder_id', '')`);
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('google_drive_folder_name', '晶創計畫出席名單回收區')`);
 
-  // 檢查是否有範例會議，若無則插入一筆示範資料方便立即查看體驗
+  // 檢查是否有會議
   db.get(`SELECT COUNT(*) as count FROM meetings`, (err, row) => {
     if (!err && row.count === 0) {
       db.run(
@@ -121,7 +133,6 @@ db.serialize(() => {
                 [meetingId, att.dept, att.name, att.title, att.role, att.seat, att.fee_rev, att.fee_traf, att.fee_meal, att.note]
               );
             });
-            console.log('示範會議與出席名單建立完成！');
           }
         }
       );

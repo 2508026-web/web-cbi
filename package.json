@@ -2,7 +2,6 @@
   "name": "meeting-management-system",
   "version": "1.0.0",
   "description": "智慧會議管理與費用核銷系統 - 晶創計畫辦公室",
-  "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js"

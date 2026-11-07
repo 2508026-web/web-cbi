@@ -13,8 +13,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// 確保上傳與資料目錄存在
-const uploadDir = path.resolve(__dirname, '../uploads/drive');
+// 確保上傳與資料目錄存在 (Vercel 相容 /tmp)
+const isVercel = process.env.VERCEL === '1';
+const uploadDir = isVercel ? '/tmp/uploads/drive' : path.resolve(__dirname, '../uploads/drive');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
