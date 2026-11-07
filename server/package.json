@@ -1,0 +1,19 @@
+{
+  "name": "meeting-system-server",
+  "version": "1.0.0",
+  "description": "Smart Meeting Management and Reimbursement System Backend",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@isomorphic-git/lightning-fs": "^4.10.5",
+    "adm-zip": "^0.5.16",
+    "cors": "^2.8.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "isomorphic-git": "^1.44.11",
+    "multer": "^1.4.5-lts.1",
+    "sqlite3": "^5.1.7"
+  }
+}

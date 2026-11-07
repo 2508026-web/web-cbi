@@ -1,0 +1,10 @@
+node_modules/
+server/node_modules/
+.env
+.DS_Store
+Thumbs.db
+data/*.db-journal
+uploads/drive/*
+!uploads/drive/.gitkeep
+産出檔案/
+*.log

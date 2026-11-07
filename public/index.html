@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智慧會議管理與費用核銷系統 - 晶創計畫辦公室</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 頂部導航列 -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <span class="brand-icon">🏛️</span>
+      <div class="brand-text">
+        <h1>智慧會議管理與費用核銷系統</h1>
+        <span class="sub-brand">晶創計畫辦公室 (Taiwan Chip-based Industrial Innovation Program)</span>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <div class="meeting-selector-box">
+        <label for="currentMeetingSelect">當前會議：</label>
+        <select id="currentMeetingSelect" onchange="switchMeeting(this.value)">
+          <!-- 動態載入會議清單 -->
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="openNewMeetingModal()">➕ 新增會議</button>
+      </div>
+      <div class="admin-status">
+        <span id="adminBadge" class="badge badge-success">🔓 管理員已登入</span>
+        <button id="authBtn" class="btn btn-outline btn-sm" onclick="toggleAuth()">鎖定編輯</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 功能分頁標籤 -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="tab-overview" onclick="switchTab('tab-overview')">
+      📋 開會資訊與出席名單
+    </button>
+    <button class="tab-btn" data-tab="tab-seats" onclick="switchTab('tab-seats')">
+      🪑 當日會議座位表
+    </button>
+    <button class="tab-btn" data-tab="tab-badges" onclick="switchTab('tab-badges')">
+      🏷️ 桌牌自動匯出 (PPTX)
+    </button>
+    <button class="tab-btn" data-tab="tab-finance" onclick="switchTab('tab-finance')">
+      💰 費用計算與核銷 (Excel)
+    </button>
+    <button class="tab-btn" data-tab="tab-google" onclick="switchTab('tab-google')">
+      ☁️ Google 日曆 & Drive 名單回收
+    </button>
+    <button class="tab-btn" data-tab="tab-settings" onclick="switchTab('tab-settings')">
+      ⚙️ 費用規則與系統設定
+    </button>
+  </nav>
+
+  <!-- 主要內容區 -->
+  <main class="main-container">
+    
+    <!-- 分頁 1: 開會資訊與出席名單 -->
+    <section id="tab-overview" class="tab-content active">
+      <!-- 會議基本資訊卡 -->
+      <div class="card meeting-info-card">
+        <div class="card-header">
+          <div class="card-title">
+            <h2 id="meetingTitle">載入中...</h2>
+            <span id="meetingDateBadge" class="badge badge-primary">2026-11-06</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openEditMeetingModal()">✏️ 編輯會議資訊</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCurrentMeeting()">🗑️ 刪除會議</button>
+          </div>
+        </div>
+        <div class="meeting-details-grid">
+          <div class="detail-item">
+            <span class="label">📅 開會時間</span>
+            <span id="meetingTime" class="value">14:00 - 16:30</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">📍 開會地點</span>
+            <span id="meetingLocation" class="value">行政院科技會報第 201 會議室</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">👤 會議主席</span>
+            <span id="meetingChairperson" class="value">李政務委員</span>
+          </div>
+          <div class="detail-item full-width">
+            <span class="label">📝 會議說明／議程</span>
+            <p id="meetingDescription" class="value desc">討論各部會推動 IC 設計與應用創新計畫進度回顧與經費審查。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 出席名單管理區 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <h3>👥 會議出席人員名單</h3>
+            <span id="attendeeCountBadge" class="badge badge-info">共 0 人</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-primary" onclick="openAddAttendeeModal()">➕ 新增出席者</button>
+            <button class="btn btn-secondary" onclick="openBatchImportModal()">📑 批次匯入名單</button>
+            <button class="btn btn-success" onclick="exportBadgesDirect()">🏷️ 匯出桌牌 PPT</button>
+          </div>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="data-table" id="attendeesTable">
+            <thead>
+              <tr>
+                <th width="60">項次</th>
+                <th>部會／服務單位</th>
+                <th>姓名</th>
+                <th>職稱</th>
+                <th>角色身分</th>
+                <th>座位</th>
+                <th>審查費</th>
+                <th>專家旅費</th>
+                <th>餐費</th>
+                <th>備註</th>
+                <th width="120">操作</th>
+              </tr>
+            </thead>
+            <tbody id="attendeesTableBody">
+              <!-- 動態生成出席者資料列 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 分頁 2: 視覺化座位表 -->
+    <section id="tab-seats" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <h2>🪑 當日會議席位座位圖</h2>
+            <p class="subtitle">視覺化呈現會議室席位佈局，點選席位可指派或替換出席者</p>
+          </div>
+          <div class="card-actions">
+            <div class="btn-group">
+              <label>排位佈局：</label>
+              <select id="seatLayoutSelect" onchange="changeSeatLayout(this.value)">
+                <option value="rectangle">長桌會議型 (Rectangle)</option>
+                <option value="u_shape">U 型會議桌 (U-Shape)</option>
+                <option value="round">圓桌型 (Round Table)</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary" onclick="window.print()">🖨️ 列印座位表</button>
+          </div>
+        </div>
+
+        <!-- 座位圖渲染容器 -->
+        <div class="seat-map-wrapper">
+          <div class="chairperson-stage">
+            <div class="stage-label">【 主 席 台 】</div>
+            <div class="chairperson-seat" id="chairSeatBox">
+              <div class="seat-role">會議主席</div>
+              <div class="seat-name" id="chairSeatName">李政務委員</div>
+            </div>
+          </div>
+
+          <div class="seats-canvas" id="seatsCanvas">
+            <!-- 動態繪製座位 -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 分頁 3: 桌牌自動匯出 -->
+    <section id="tab-badges" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <h2>🏷️ 會議桌牌自動套用匯出</h2>
+            <p class="subtitle">完全套用您更新後的 <code>範例/桌牌格式.pptx</code> 樣式（每頁 A4 上下各 1 位出席人員、正反雙面折疊排版、微軟正黑體）</p>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-success btn-lg" onclick="exportBadgesDirect()">
+              📥 一鍵下載會議桌牌 (PPTX)
+            </button>
+          </div>
+        </div>
+
+        <div class="badge-preview-section">
+          <h3>桌牌預覽（將依照目前會議出席名單自動分頁套用）：</h3>
+          <div class="badge-grid" id="badgePreviewGrid">
+            <!-- 動態產生預覽卡片 -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 分頁 4: 費用計算與核銷 -->
+    <section id="tab-finance" class="tab-content">
+      <!-- 費用統計總覽 -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-icon">🎓</span>
+          <div class="stat-data">
+            <span class="stat-title">專家審查費總計</span>
+            <span class="stat-value" id="statReviewFee">$0</span>
+            <span class="stat-desc">科目：51330909</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">🚄</span>
+          <div class="stat-data">
+            <span class="stat-title">專家交通旅費總計</span>
+            <span class="stat-value" id="statTrafficFee">$0</span>
+            <span class="stat-desc">科目：51330906</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">🍱</span>
+          <div class="stat-data">
+            <span class="stat-title">會議餐飲費用總計</span>
+            <span class="stat-value" id="statMealFee">$0</span>
+            <span class="stat-desc">科目：51330604</span>
+          </div>
+        </div>
+        <div class="stat-card highlight">
+          <span class="stat-icon">💵</span>
+          <div class="stat-data">
+            <span class="stat-title">本場會議費用合計</span>
+            <span class="stat-value" id="statTotalFee">$0</span>
+            <span class="stat-desc">小計與總計自動校驗</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 核銷明細表匯出卡片 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <h3>📑 會後費用核銷明細表匯出</h3>
+            <p class="subtitle">完全套用您提供的 <code>範例/核銷明細表格式.xlsx</code>，依照「會議日期」、「會議名稱」排序匯出</p>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-primary" onclick="exportReimbursementSingle()">
+              📥 匯出當前會議核銷表 (Excel)
+            </button>
+            <button class="btn btn-outline" onclick="openBatchReimbursementModal()">
+              📚 多場會議合併核銷匯出
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="financeTable">
+            <thead>
+              <tr>
+                <th>項次</th>
+                <th>姓名</th>
+                <th>會議日期</th>
+                <th>會議名稱</th>
+                <th>審查費 (51330909)</th>
+                <th>專家旅費 (51330906)</th>
+                <th>會議費用 (51330604)</th>
+                <th>小計</th>
+                <th>備註</th>
+              </tr>
+            </thead>
+            <tbody id="financeTableBody">
+              <!-- 填入資料 -->
+            </tbody>
+            <tfoot id="financeTableFoot">
+              <!-- 總計列 -->
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 分頁 5: Google 日曆與雲端硬碟名單回收 -->
+    <section id="tab-google" class="tab-content">
+      <div class="grid-2col">
+        <!-- Google Calendar 區塊 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <h3>📅 Google Calendar 會議行事曆</h3>
+              <p class="subtitle">即時檢視會議時程與同步至行事曆</p>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-outline btn-sm" onclick="addToGoogleCalendar()">➕ 加入 Google 日曆</button>
+              <button class="btn btn-secondary btn-sm" onclick="downloadIcsFile()">📥 下載 ICS 行事曆</button>
+            </div>
+          </div>
+          <div class="calendar-preview-box">
+            <div class="cal-event-card">
+              <div class="cal-time-badge">
+                <span class="month" id="calMonth">11月</span>
+                <span class="day" id="calDay">06</span>
+              </div>
+              <div class="cal-info">
+                <h4 id="calMeetingName">晶創計畫推動審查會議</h4>
+                <p>⏰ <span id="calMeetingTime">14:00 - 16:30</span></p>
+                <p>📍 <span id="calMeetingLoc">行政院科技會報第 201 會議室</span></p>
+                <p>👤 主席：<span id="calChairperson">李政務委員</span></p>
+              </div>
+            </div>
+            <div class="info-alert">
+              💡 支援免付費直接點擊「加入 Google 日曆」，系統會自動帶入會議名稱、開會時間、地點及完整議程。
+            </div>
+          </div>
+        </div>
+
+        <!-- Google Drive 名單回收專區 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <h3>📁 Google Drive 共同資料夾名單回收</h3>
+              <p class="subtitle">各計畫窗口將部會出席名單上傳至指定共同資料夾</p>
+            </div>
+          </div>
+
+          <div class="upload-dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+            <div class="drop-icon">📤</div>
+            <p><strong>點擊或拖曳檔案至此處上傳</strong></p>
+            <span class="help-text">支援部會出席名單 Excel, Word, PDF (自動歸檔至指定資料夾)</span>
+            <input type="file" id="fileInput" style="display:none" onchange="handleFileUpload(this.files[0])">
+          </div>
+
+          <div class="upload-form">
+            <div class="form-row">
+              <label>計畫窗口名稱：</label>
+              <input type="text" id="uploaderName" placeholder="例如：晶創推動組 林專員" value="晶創計畫窗口">
+            </div>
+          </div>
+
+          <!-- 已上傳清單 -->
+          <div class="uploaded-files-list">
+            <h4>📂 已回收的部會名單列表：</h4>
+            <ul id="uploadedFilesUl" class="file-list">
+              <!-- 動態生成檔案清單 -->
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 分頁 6: 費用規則與系統設定 -->
+    <section id="tab-settings" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <h2>⚙️ 會議費用自訂計算規則</h2>
+            <p class="subtitle">管理員可自行編輯各項費用標準、會計代碼與預設金額</p>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-primary" onclick="openAddFeeRuleModal()">➕ 新增費用項目</button>
+          </div>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>費用項目名稱</th>
+              <th>科目代碼 (會計代號)</th>
+              <th>費用類別</th>
+              <th>預設金額 (元)</th>
+              <th>說明</th>
+              <th width="120">操作</th>
+            </tr>
+          </thead>
+          <tbody id="feeRulesTableBody">
+            <!-- 動態載入費用規則 -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Google 串接與管理員設定 -->
+      <div class="card" style="margin-top: 24px;">
+        <div class="card-header">
+          <div class="card-title">
+            <h3>🔒 管理員與雲端資料夾設定</h3>
+          </div>
+        </div>
+        <div class="settings-form">
+          <div class="form-group">
+            <label>Google Drive 共同資料夾名稱：</label>
+            <input type="text" id="settingDriveFolderName" value="晶創計畫出席名單回收區">
+          </div>
+          <div class="form-group">
+            <label>Google Drive 共同資料夾 ID（選填）：</label>
+            <input type="text" id="settingDriveFolderId" placeholder="例如：1a2b3c4d5e6f7g8h9...">
+            <small>若留空則直接儲存於本機指定共同資料夾 <code>uploads/drive/</code>，完全免費。</small>
+          </div>
+          <div class="form-group">
+            <label>管理員登入密碼：</label>
+            <input type="password" id="settingAdminPassword" placeholder="預設密碼 admin123">
+          </div>
+          <button class="btn btn-primary" onclick="saveSystemSettings()">💾 儲存設定</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 互動彈跳視窗 (Modals) -->
+  
+  <!-- 新增/編輯出席者 Modal -->
+  <div class="modal" id="attendeeModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="attendeeModalTitle">新增會議出席者</h3>
+        <button class="close-btn" onclick="closeModal('attendeeModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="attendeeId">
+        <div class="form-group">
+          <label><span class="required">*</span> 部會／服務單位名稱：</label>
+          <input type="text" id="attDept" placeholder="例如：國家科學及技術委員會、數位發展部" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label><span class="required">*</span> 姓名：</label>
+            <input type="text" id="attName" placeholder="例如：張國榮" required>
+          </div>
+          <div class="form-group">
+            <label><span class="required">*</span> 職稱：</label>
+            <input type="text" id="attTitle" placeholder="例如：特聘研究員、副司長" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>出席角色：</label>
+            <select id="attRole" onchange="applyDefaultFeesByRole(this.value)">
+              <option value="審查專家">審查專家 (出席審查費)</option>
+              <option value="部會代表">部會代表</option>
+              <option value="計畫主持人">計畫主持人</option>
+              <option value="工作人員">工作人員</option>
+              <option value="列席人員">列席人員</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>座位編號：</label>
+            <input type="text" id="attSeat" placeholder="例如：1, 2, A1, B2">
+          </div>
+        </div>
+
+        <div class="fee-inputs-box">
+          <h4>💰 費用計算設定（元）</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>審查費 (51330909)：</label>
+              <input type="number" id="attFeeReview" value="0">
+            </div>
+            <div class="form-group">
+              <label>專家旅費 (51330906)：</label>
+              <input type="number" id="attFeeTraffic" value="0">
+            </div>
+            <div class="form-group">
+              <label>會議費用 (51330604)：</label>
+              <input type="number" id="attFeeMeal" value="120">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>備註說明：</label>
+          <input type="text" id="attNote" placeholder="例如：外縣市高鐵來回、實報實銷">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('attendeeModal')">取消</button>
+        <button class="btn btn-primary" onclick="saveAttendee()">確定儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 批次匯入名單 Modal -->
+  <div class="modal" id="batchImportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📑 批次匯入出席者名單</h3>
+        <button class="close-btn" onclick="closeModal('batchImportModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="help-text">直接從 Excel 或 Word 複製名單表格貼上（支援定位鍵 Tab 或逗號分隔）：<br>
+        <strong>格式範例：</strong> 服務單位 [Tab] 姓名 [Tab] 職稱 [Tab] 身分</p>
+        <textarea id="batchInputText" rows="8" placeholder="國家科學及技術委員會	張國榮	特聘研究員	審查專家
+數位發展部	林立文	司長	部會代表
+經濟部產業技術司	陳建銘	副司長	部會代表
+國立清華大學	王敏慧	講座教授	審查專家"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('batchImportModal')">取消</button>
+        <button class="btn btn-primary" onclick="submitBatchImport()">開始解析並匯入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增會議 Modal -->
+  <div class="modal" id="meetingModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="meetingModalTitle">新增會議</h3>
+        <button class="close-btn" onclick="closeModal('meetingModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editMeetingId">
+        <div class="form-group">
+          <label><span class="required">*</span> 會議名稱：</label>
+          <input type="text" id="mName" placeholder="例如：晶創計畫第一季推動與部會協調審查會議" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label><span class="required">*</span> 開會日期：</label>
+            <input type="date" id="mDate" required>
+          </div>
+          <div class="form-group">
+            <label>開會時間：</label>
+            <input type="text" id="mTime" placeholder="例如：14:00 - 16:30">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>開會地點：</label>
+            <input type="text" id="mLocation" placeholder="例如：行政院科技會報第 201 會議室">
+          </div>
+          <div class="form-group">
+            <label>會議主席：</label>
+            <input type="text" id="mChairperson" placeholder="例如：李政務委員">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>會議說明與議程：</label>
+          <textarea id="mDescription" rows="3" placeholder="請填寫會議主題簡介或議程重點..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('meetingModal')">取消</button>
+        <button class="btn btn-primary" onclick="saveMeeting()">儲存會議</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 多場會議合併核銷 Modal -->
+  <div class="modal" id="batchReimbursementModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📚 多場會議合併核銷明細匯出</h3>
+        <button class="close-btn" onclick="closeModal('batchReimbursementModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="help-text">請勾選欲一併匯出核銷明細的會議（系統會依照<strong>會議日期</strong>與<strong>會議名稱</strong>自動排序）：</p>
+        <div id="meetingCheckboxList" class="checkbox-list">
+          <!-- 動態載入會議核取方塊 -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('batchReimbursementModal')">取消</button>
+        <button class="btn btn-success" onclick="exportBatchReimbursement()">📥 下載合併核銷 Excel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 載入系統主要 JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
