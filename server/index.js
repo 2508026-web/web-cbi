@@ -121,7 +121,7 @@ app.put('/api/meetings/:id', (req, res) => {
   db.run(
     `UPDATE meetings SET name = ?, date = ?, time = ?, location = ?, chairperson = ?, description = ?, seat_layout = ?
      WHERE id = ?`,
-    [name, date, time, location, chairperson, description, seat_layout, req.params.id],
+    [name, date, time || '', location || '', chairperson || '', description || '', seat_layout || 'rectangle', req.params.id],
     function(err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true });

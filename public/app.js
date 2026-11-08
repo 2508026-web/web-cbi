@@ -871,7 +871,8 @@ async function saveMeeting() {
     time: document.getElementById('mTime').value.trim(),
     location: document.getElementById('mLocation').value.trim(),
     chairperson: document.getElementById('mChairperson').value.trim(),
-    description: document.getElementById('mDescription').value.trim()
+    description: document.getElementById('mDescription').value.trim(),
+    seat_layout: (currentMeeting && currentMeeting.seat_layout) || 'rectangle'
   };
 
   if (!payload.name || !payload.date) {
@@ -892,9 +893,12 @@ async function saveMeeting() {
     if (result.success) {
       closeModal('meetingModal');
       await loadMeetings();
-      if (!id && result.id) {
-        await switchMeeting(result.id);
+      const targetId = id ? Number(id) : result.id;
+      if (targetId) {
+        await switchMeeting(targetId);
       }
+    } else {
+      alert('儲存失敗: ' + (result.error || '未知錯誤'));
     }
   } catch (err) {
     alert('儲存失敗: ' + err.message);
